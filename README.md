@@ -4,7 +4,7 @@
 - Svit Logonder
 - Dominik Ojo
 - David Vasilev
-- Timotej Stojadinovic
+- Jan Lucas Redek
 
 ## Tema:
 Roguelike/Bullet Hell/Dungeon Crawler (ideja kot [Tiny Rogues](https://store.steampowered.com/app/2088570/Tiny_Rogues/))
