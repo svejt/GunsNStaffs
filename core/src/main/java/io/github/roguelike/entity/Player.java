@@ -14,13 +14,15 @@ import java.util.Map;
 
 public class Player extends Entity {
     private static final int FRAME_SIZE = 48;
+    private static final int FRAMES_PER_DIRECTION = 2;
 
     private final Map<PlayerState, Animation<TextureRegion>> animations = new EnumMap<>(PlayerState.class);
+    private final Map<Direction, Animation<TextureRegion>> idleAnimations = new EnumMap<>(Direction.class);
     private final Array<Texture> textures = new Array<>();
 
     private PlayerState state = PlayerState.IDLE;
+    private Direction facing = Direction.DOWN;
     private float stateTime = 0f;
-
 
     public enum PlayerState {
         IDLE,
@@ -28,31 +30,54 @@ public class Player extends Entity {
         // kasneje: ATTACK1, ATTACK2, ATTACK3, MAGIC1, MAGIC2, HURT, DEAD ...
     }
 
+    // vrstni red je enak kot v spritesheetu (vsak ima 2 sličici)
+    public enum Direction {
+        DOWN(0), UP(1), RIGHT(2), LEFT(3);
+
+        final int startFrame;
+        Direction(int index) { this.startFrame = index * FRAMES_PER_DIRECTION; }
+    }
+
     public Player(float x, float y) {
         super(x, y, FRAME_SIZE, FRAME_SIZE);
         speed = 250f;
 
-        // frameCount = 1 pomeni samo prva sličica. Ko boš hotel animacijo, daj 8.
-        load(PlayerState.IDLE, "PlayerSprites/Idle_sprite_sheet_template.png", 1);
-        load(PlayerState.WALK, "PlayerSprites/walk_sprite_sheet_template.png", 1);
+        loadIdle("PlayerSprites/WizardIdle.png", 0.3f);
+        loadWalk("PlayerSprites/walk_sprite_sheet_template.png", 1); // za zdaj 1 sličica
     }
 
-    private void load(PlayerState s, String path, int frameCount) {
+    private Texture loadTexture(String path) {
         Texture tex = new Texture(Gdx.files.internal(path));
         tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         textures.add(tex);
+        return tex;
+    }
 
-        TextureRegion[] row = TextureRegion.split(tex, FRAME_SIZE, FRAME_SIZE)[0];
+    private void loadIdle(String path, float frameDuration) {
+        TextureRegion[] row = TextureRegion.split(loadTexture(path), FRAME_SIZE, FRAME_SIZE)[0];
+
+        for (Direction d : Direction.values()) {
+            TextureRegion[] frames = new TextureRegion[FRAMES_PER_DIRECTION];
+            System.arraycopy(row, d.startFrame, frames, 0, FRAMES_PER_DIRECTION);
+
+            Animation<TextureRegion> anim = new Animation<>(frameDuration, frames);
+            anim.setPlayMode(Animation.PlayMode.LOOP);
+            idleAnimations.put(d, anim);
+        }
+    }
+
+    private void loadWalk(String path, int frameCount) {
+        TextureRegion[] row = TextureRegion.split(loadTexture(path), FRAME_SIZE, FRAME_SIZE)[0];
         TextureRegion[] used = new TextureRegion[frameCount];
         System.arraycopy(row, 0, used, 0, frameCount);
 
         Animation<TextureRegion> anim = new Animation<>(0.1f, used);
         anim.setPlayMode(Animation.PlayMode.LOOP);
-        animations.put(s, anim);
+        animations.put(PlayerState.WALK, anim);
     }
 
     private void setState(PlayerState newState) {
-        if (state == newState) return;   // isto stanje: ne resetiraj časa
+        if (state == newState) return;
         state = newState;
         stateTime = 0f;
     }
@@ -61,6 +86,7 @@ public class Player extends Entity {
     public void update(float delta) {
         handleInput();
         position.mulAdd(velocity, delta);
+        updateFacing();
         updateState();
         stateTime += delta;
     }
@@ -74,7 +100,16 @@ public class Player extends Entity {
         velocity.nor().scl(speed);
     }
 
-    // Tu se odloča, v katero stanje preideš. Vse prehode imaš na enem mestu.
+    // zapomni si smer zadnjega premikanja (pri diagonali zmaga horizontala)
+    private void updateFacing() {
+        if (velocity.isZero()) return;
+        if (Math.abs(velocity.x) >= Math.abs(velocity.y)) {
+            facing = velocity.x > 0 ? Direction.RIGHT : Direction.LEFT;
+        } else {
+            facing = velocity.y > 0 ? Direction.UP : Direction.DOWN;
+        }
+    }
+
     private void updateState() {
         switch (state) {
             case IDLE:
@@ -93,8 +128,11 @@ public class Player extends Entity {
 
     @Override
     public void render(SpriteBatch batch) {
-        TextureRegion frame = animations.get(state).getKeyFrame(stateTime);
-        batch.draw(frame, position.x, position.y, width, height);
+        Animation<TextureRegion> anim = (state == PlayerState.IDLE)
+            ? idleAnimations.get(facing)
+            : animations.get(state);
+
+        batch.draw(anim.getKeyFrame(stateTime), position.x, position.y, width, height);
     }
 
     public void dispose() {
