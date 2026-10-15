@@ -15,9 +15,15 @@ import java.util.Map;
 public class Player extends Entity {
     private static final int FRAME_SIZE = 48;
     private static final int FRAMES_PER_DIRECTION = 2;
+    private static final int WALK_FRAMES_PER_DIRECTION = 6;
 
-    private final Map<PlayerState, Animation<TextureRegion>> animations = new EnumMap<>(PlayerState.class);
+    // vrstni red smeri v walk spritesheetu (drugačen kot pri idle!): gor, dol, desno, levo
+    private static final Direction[] WALK_SHEET_ORDER = {
+        Direction.UP, Direction.DOWN, Direction.RIGHT, Direction.LEFT
+    };
+
     private final Map<Direction, Animation<TextureRegion>> idleAnimations = new EnumMap<>(Direction.class);
+    private final Map<Direction, Animation<TextureRegion>> walkAnimations = new EnumMap<>(Direction.class);
     private final Array<Texture> textures = new Array<>();
 
     private PlayerState state = PlayerState.IDLE;
@@ -43,7 +49,7 @@ public class Player extends Entity {
         speed = 250f;
 
         loadIdle("PlayerSprites/WizardIdle.png", 0.3f);
-        loadWalk("PlayerSprites/walk_sprite_sheet_template.png", 1); // za zdaj 1 sličica
+        loadWalk("PlayerSprites/walk_sprite_sheet_template.png", 0.1f);
     }
 
     private Texture loadTexture(String path) {
@@ -66,14 +72,18 @@ public class Player extends Entity {
         }
     }
 
-    private void loadWalk(String path, int frameCount) {
+    private void loadWalk(String path, float frameDuration) {
         TextureRegion[] row = TextureRegion.split(loadTexture(path), FRAME_SIZE, FRAME_SIZE)[0];
-        TextureRegion[] used = new TextureRegion[frameCount];
-        System.arraycopy(row, 0, used, 0, frameCount);
 
-        Animation<TextureRegion> anim = new Animation<>(0.1f, used);
-        anim.setPlayMode(Animation.PlayMode.LOOP);
-        animations.put(PlayerState.WALK, anim);
+        // 4 smeri x 6 sličic, v vrstnem redu WALK_SHEET_ORDER
+        for (int i = 0; i < WALK_SHEET_ORDER.length; i++) {
+            TextureRegion[] frames = new TextureRegion[WALK_FRAMES_PER_DIRECTION];
+            System.arraycopy(row, i * WALK_FRAMES_PER_DIRECTION, frames, 0, WALK_FRAMES_PER_DIRECTION);
+
+            Animation<TextureRegion> anim = new Animation<>(frameDuration, frames);
+            anim.setPlayMode(Animation.PlayMode.LOOP);
+            walkAnimations.put(WALK_SHEET_ORDER[i], anim);
+        }
     }
 
     private void setState(PlayerState newState) {
@@ -130,7 +140,7 @@ public class Player extends Entity {
     public void render(SpriteBatch batch) {
         Animation<TextureRegion> anim = (state == PlayerState.IDLE)
             ? idleAnimations.get(facing)
-            : animations.get(state);
+            : walkAnimations.get(facing);
 
         batch.draw(anim.getKeyFrame(stateTime), position.x, position.y, width, height);
     }
