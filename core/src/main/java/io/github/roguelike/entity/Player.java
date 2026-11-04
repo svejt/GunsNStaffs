@@ -30,6 +30,13 @@ public class Player extends Entity {
     private Direction facing = Direction.DOWN;
     private float stateTime = 0f;
 
+    // Stats
+    private float maxHp;
+    private float currentHp;
+    private float damage;
+    private float attackRate;
+    private float movementSpeed;
+
     public enum PlayerState {
         IDLE,
         WALK
@@ -48,8 +55,15 @@ public class Player extends Entity {
         super(x, y, FRAME_SIZE, FRAME_SIZE);
         speed = 250f;
 
-        loadIdle("PlayerSprites/WizardIdle.png", 0.3f);
-        loadWalk("PlayerSprites/walk_sprite_sheet_template.png", 0.1f);
+        // Initialize stats with default values
+        this.maxHp = 50f;
+        this.currentHp = 50f;
+        this.damage = 10f;
+        this.attackRate = 1f;
+        this.movementSpeed = 250f;
+
+        loadIdle("PlayerSprites/WizardIdleOutline.png", 0.3f);
+        loadWalk("PlayerSprites/WizardWalkOutline.png", 0.1f);
     }
 
     private Texture loadTexture(String path) {
@@ -103,10 +117,11 @@ public class Player extends Entity {
 
     private void handleInput() {
         velocity.set(0, 0);
-        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP))    velocity.y += 1;
-        if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN))  velocity.y -= 1;
-        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT))  velocity.x -= 1;
-        if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) velocity.x += 1;
+        // samo WASD; puščične tipke so za streljanje (PlayerShootSystem)
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) velocity.y += 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) velocity.y -= 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) velocity.x -= 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) velocity.x += 1;
         velocity.nor().scl(speed);
     }
 
@@ -148,4 +163,20 @@ public class Player extends Entity {
     public void dispose() {
         for (Texture t : textures) t.dispose();
     }
+
+    // Stats getters and setters
+    public float getMaxHp() { return maxHp; }
+    public void setMaxHp(float maxHp) { this.maxHp = maxHp; }
+
+    public float getCurrentHp() { return currentHp; }
+    public void setCurrentHp(float currentHp) { this.currentHp = currentHp; }
+
+    public float getDamage() { return damage; }
+    public void setDamage(float damage) { this.damage = damage; }
+
+    public float getAttackRate() { return attackRate; }
+    public void setAttackRate(float attackRate) { this.attackRate = attackRate; }
+
+    public float getMovementSpeed() { return movementSpeed; }
+    public void setMovementSpeed(float movementSpeed) { this.movementSpeed = movementSpeed; }
 }

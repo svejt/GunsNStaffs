@@ -14,4 +14,7 @@ public class AttackComponent implements Component {
 
     // slash efekt, narisan v desno; za ostale smeri se zavrti/zrcali pri risanju
     public Animation<TextureRegion> slash;
+
+    // sledi, ali je ta napad že povzročil škodo (da ne udari večkrat na en napad)
+    public boolean hasDealtDamage = false;
 }

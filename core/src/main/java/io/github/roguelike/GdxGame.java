@@ -2,12 +2,13 @@ package io.github.roguelike;
 
 import com.badlogic.gdx.Game;
 import io.github.roguelike.screens.GameScreen;
+import io.github.roguelike.screens.StartMenuScreen;
 
 public class GdxGame extends Game {
 
     @Override
     public void create() {
-        setScreen(new GameScreen(this));
+        setScreen(new StartMenuScreen(this));
     }
 
     @Override

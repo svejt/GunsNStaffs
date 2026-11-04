@@ -11,6 +11,11 @@ public final class Mappers {
     public static final ComponentMapper<EnemyStateComponent> ENEMY_STATE = ComponentMapper.getFor(EnemyStateComponent.class);
     public static final ComponentMapper<AttackComponent> ATTACK = ComponentMapper.getFor(AttackComponent.class);
     public static final ComponentMapper<AnimationComponent> ANIMATION = ComponentMapper.getFor(AnimationComponent.class);
+    public static final ComponentMapper<StatsComponent> STATS = ComponentMapper.getFor(StatsComponent.class);
+    public static final ComponentMapper<ProjectileComponent> PROJECTILE = ComponentMapper.getFor(ProjectileComponent.class);
+    public static final ComponentMapper<ItemComponent> ITEM = ComponentMapper.getFor(ItemComponent.class);
+    public static final ComponentMapper<FloatingTextComponent> FLOATING_TEXT = ComponentMapper.getFor(FloatingTextComponent.class);
+    public static final ComponentMapper<FlaskComponent> FLASK = ComponentMapper.getFor(FlaskComponent.class);
 
     private Mappers() {}
 }

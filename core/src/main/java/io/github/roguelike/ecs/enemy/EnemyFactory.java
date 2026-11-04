@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Disposable;
 import io.github.roguelike.ecs.component.*;
+import io.github.roguelike.ecs.component.StatsComponent;
 import io.github.roguelike.entity.Player.Direction;
 
 import java.util.EnumMap;
@@ -30,14 +31,22 @@ public class EnemyFactory implements Disposable {
     private final Map<Direction, Animation<TextureRegion>> idleAnimations = new EnumMap<>(Direction.class);
 
     public EnemyFactory() {
-        idleSheet = new Texture(Gdx.files.internal("EnemySprites/EnemyIdleTemp.png"));
+        idleSheet = new Texture(Gdx.files.internal("EnemySprites/TempEnemyPlaceholder.png"));
         idleSheet.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-        // enak vrstni red kot pri playerju: DOWN, UP, RIGHT, LEFT (vsak 2 sličici)
-        TextureRegion[] row = TextureRegion.split(idleSheet, FRAME_SIZE, FRAME_SIZE)[0];
+        // Handle single sprite or multi-frame spritesheet
+        TextureRegion[][] split = TextureRegion.split(idleSheet, FRAME_SIZE, FRAME_SIZE);
+        TextureRegion[] row = split[0];
+        boolean isSingleSprite = (split.length == 1 && row.length == 1);
+
         for (Direction d : Direction.values()) {
-            TextureRegion[] frames = new TextureRegion[FRAMES_PER_DIRECTION];
-            System.arraycopy(row, d.ordinal() * FRAMES_PER_DIRECTION, frames, 0, FRAMES_PER_DIRECTION);
+            TextureRegion[] frames;
+            if (isSingleSprite) {
+                frames = new TextureRegion[]{row[0]};
+            } else {
+                frames = new TextureRegion[FRAMES_PER_DIRECTION];
+                System.arraycopy(row, d.ordinal() * FRAMES_PER_DIRECTION, frames, 0, FRAMES_PER_DIRECTION);
+            }
 
             Animation<TextureRegion> anim = new Animation<>(0.3f, frames);
             anim.setPlayMode(Animation.PlayMode.LOOP);
@@ -51,7 +60,7 @@ public class EnemyFactory implements Disposable {
         slashAnimation.setPlayMode(Animation.PlayMode.NORMAL);
     }
 
-    public Entity createMeleeEnemy(Engine engine, float x, float y) {
+    public Entity createMeleeEnemy(Engine engine, float x, float y, float difficultyMultiplier) {
         Entity enemy = new Entity();
 
         TransformComponent transform = new TransformComponent();
@@ -69,6 +78,14 @@ public class EnemyFactory implements Disposable {
         AttackComponent attack = new AttackComponent();
         attack.slash = slashAnimation;
 
+        StatsComponent stats = new StatsComponent();
+        // Default values scaled by difficulty multiplier
+        stats.maxHp = 30f * difficultyMultiplier;
+        stats.currentHp = 30f * difficultyMultiplier;
+        stats.damage = 5f * difficultyMultiplier;
+        stats.attackRate = 0.5f;
+        stats.movementSpeed = 100f;
+
         EnemyStateComponent state = new EnemyStateComponent();
         state.fsm = new DefaultStateMachine<>(enemy, EnemyState.IDLE);
 
@@ -78,6 +95,52 @@ public class EnemyFactory implements Disposable {
             .add(new TargetComponent())
             .add(new EnemyComponent())
             .add(attack)
+            .add(stats)
+            .add(animation)
+            .add(state);
+
+        engine.addEntity(enemy);
+        return enemy;
+    }
+
+    // Overload for backward compatibility (default multiplier = 1)
+    public Entity createMeleeEnemy(Engine engine, float x, float y) {
+        return createMeleeEnemy(engine, x, y, 1f);
+    }
+
+    public Entity createEliteEnemy(Engine engine, float x, float y, float sizeMultiplier, float statMultiplier) {
+        Entity enemy = new Entity();
+
+        TransformComponent transform = new TransformComponent();
+        transform.position.set(x, y);
+        transform.width = FRAME_SIZE * sizeMultiplier;
+        transform.height = FRAME_SIZE * sizeMultiplier;
+
+        AnimationComponent animation = new AnimationComponent();
+        animation.animations.put(EnemyState.IDLE, idleAnimations);
+        animation.animations.put(EnemyState.CHASE, idleAnimations);
+        animation.animations.put(EnemyState.ATTACK, idleAnimations);
+
+        AttackComponent attack = new AttackComponent();
+        attack.slash = slashAnimation;
+
+        StatsComponent stats = new StatsComponent();
+        stats.maxHp = 30f * statMultiplier;
+        stats.currentHp = 30f * statMultiplier;
+        stats.damage = 5f * statMultiplier;
+        stats.attackRate = 0.5f;
+        stats.movementSpeed = 100f;
+
+        EnemyStateComponent state = new EnemyStateComponent();
+        state.fsm = new DefaultStateMachine<>(enemy, EnemyState.IDLE);
+
+        enemy.add(transform)
+            .add(new VelocityComponent())
+            .add(new FacingComponent())
+            .add(new TargetComponent())
+            .add(new EnemyComponent())
+            .add(attack)
+            .add(stats)
             .add(animation)
             .add(state);
 
