@@ -14,7 +14,6 @@ import io.github.roguelike.ecs.enemy.EnemyFactory;
 import io.github.roguelike.ecs.item.FlaskFactory;
 import io.github.roguelike.ecs.item.ItemFactory;
 import io.github.roguelike.ecs.projectile.ProjectileFactory;
-import io.github.roguelike.ecs.system.BossDeathSystem;
 import io.github.roguelike.ecs.system.EnemyDamageSystem;
 import io.github.roguelike.ecs.system.EnemyRenderSystem;
 import io.github.roguelike.ecs.system.EnemyStateSystem;
@@ -95,10 +94,9 @@ public class GameScreen extends ScreenAdapter {
         engine.addSystem(new MovementSystem());         // velocity -> position
         engine.addSystem(new FacingSystem());           // velocity -> smer gledanja
         engine.addSystem(new EnemyDamageSystem(player)); // slash collision -> player damage
-        engine.addSystem(new ProjectileDamageSystem()); // projectile collision -> enemy damage
+        engine.addSystem(new ProjectileDamageSystem(this)); // projectile collision -> enemy damage
         engine.addSystem(new ItemCollectionSystem(player, this)); // item collision -> stat boost
         engine.addSystem(new FlaskCollectionSystem(player)); // flask collision -> heal
-        engine.addSystem(new BossDeathSystem(this));    // boss death -> difficulty increase
         engine.addSystem(new ProjectileSystem(WORLD_W, WORLD_H)); // odstrani projectile izven sveta
         engine.addSystem(enemyRenderSystem);            // processing = false, riše se ročno v render()
         engine.addSystem(slashRenderSystem);            // processing = false, riše se ročno v render()
@@ -202,6 +200,13 @@ public class GameScreen extends ScreenAdapter {
             itemSpawnTimer = 0f;
         }
 
+        // Spawn flasks periodically
+        flaskSpawnTimer += delta;
+        if (flaskSpawnTimer >= FLASK_SPAWN_INTERVAL) {
+            spawnFlaskAtRandom();
+            flaskSpawnTimer = 0f;
+        }
+
         engine.update(delta);
 
         // celoten zaslon (tudi letterbox robovi) črn
@@ -221,6 +226,7 @@ public class GameScreen extends ScreenAdapter {
         player.render(batch);
         projectileRenderSystem.update(delta);
         itemRenderSystem.update(delta);
+        flaskRenderSystem.update(delta);
         slashRenderSystem.update(delta); // slash čisto na koncu, da je pred playerjem
         batch.end();
 
@@ -268,7 +274,7 @@ public class GameScreen extends ScreenAdapter {
         shapes.rect(progressX, progressY, PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT);
 
         // Progress bar fill
-        float progress = (float) boxesCollected / BOXES_FOR_BOSS;
+        float progress = Math.min(1f, (float) boxesCollected / BOXES_FOR_BOSS);
         float progressFillWidth = PROGRESS_BAR_WIDTH * progress;
         shapes.setColor(0.5f, 0.3f, 0.8f, 1f);
         shapes.rect(progressX, progressY, progressFillWidth, PROGRESS_BAR_HEIGHT);
@@ -301,6 +307,7 @@ public class GameScreen extends ScreenAdapter {
         enemyFactory.dispose();
         projectileFactory.dispose();
         itemFactory.dispose();
+        flaskFactory.dispose();
         floatingTextRenderSystem.dispose();
     }
 }

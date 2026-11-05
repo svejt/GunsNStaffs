@@ -8,6 +8,7 @@ public class StatsComponent implements Component {
     public float damage;
     public float attackRate; // attacks per second
     public float movementSpeed;
+    public boolean isBoss = false;
 
     public StatsComponent() {
         // Default values - will be set later

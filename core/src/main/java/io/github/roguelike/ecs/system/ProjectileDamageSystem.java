@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.systems.IteratingSystem;
 import com.badlogic.gdx.math.Rectangle;
 import io.github.roguelike.ecs.component.*;
+import io.github.roguelike.screens.GameScreen;
 
 /**
  * System za detekcijo trka med projectile in enemyji.
@@ -12,14 +13,16 @@ import io.github.roguelike.ecs.component.*;
  * Če enemyjev HP pade na 0 ali manj, ga odstranimo.
  */
 public class ProjectileDamageSystem extends IteratingSystem {
+    private final GameScreen gameScreen;
     private final Rectangle projectileBounds = new Rectangle();
     private final Rectangle enemyBounds = new Rectangle();
 
-    public ProjectileDamageSystem() {
+    public ProjectileDamageSystem(GameScreen gameScreen) {
         super(Family.all(
             ProjectileComponent.class,
             TransformComponent.class
         ).get(), 2); // teče po MovementSystem
+        this.gameScreen = gameScreen;
     }
 
     @Override
@@ -49,6 +52,9 @@ public class ProjectileDamageSystem extends IteratingSystem {
 
                 // Če je enemy mrtev, ga odstrani
                 if (enemyStats.currentHp <= 0f) {
+                    if (enemyStats.isBoss) {
+                        gameScreen.onBossDeath();
+                    }
                     getEngine().removeEntity(enemy);
                 }
 

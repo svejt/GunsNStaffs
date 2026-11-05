@@ -130,6 +130,7 @@ public class EnemyFactory implements Disposable {
         stats.damage = 5f * statMultiplier;
         stats.attackRate = 0.5f;
         stats.movementSpeed = 100f;
+        stats.isBoss = true;
 
         EnemyStateComponent state = new EnemyStateComponent();
         state.fsm = new DefaultStateMachine<>(enemy, EnemyState.IDLE);
