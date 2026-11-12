@@ -19,6 +19,10 @@ public abstract class Entity {
     public abstract void update(float delta);
     public abstract void render(SpriteBatch batch);
 
+    public void setPosition(float x, float y) {
+        position.set(x, y);
+    }
+
     public Rectangle getBounds() {
         return new Rectangle(position.x, position.y, width, height);
     }
