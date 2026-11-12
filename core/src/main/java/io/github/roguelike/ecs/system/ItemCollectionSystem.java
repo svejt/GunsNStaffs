@@ -10,11 +10,9 @@ import io.github.roguelike.ecs.component.ItemComponent;
 import io.github.roguelike.ecs.component.Mappers;
 import io.github.roguelike.ecs.component.TransformComponent;
 import io.github.roguelike.entity.Player;
-import io.github.roguelike.screens.GameScreen;
 
 public class ItemCollectionSystem extends IteratingSystem {
     private final Player player;
-    private final GameScreen gameScreen;
     private final Rectangle itemBounds = new Rectangle();
     private final Rectangle playerBounds = new Rectangle();
 
@@ -24,13 +22,9 @@ public class ItemCollectionSystem extends IteratingSystem {
     private static final float DEFAULT_ATTACK_RATE = 1f;
     private static final float DEFAULT_MOVEMENT_SPEED = 250f;
 
-    // Elite enemy spawn settings
-    private static final int ELITE_SPAWN_THRESHOLD = 20;
-
-    public ItemCollectionSystem(Player player, GameScreen gameScreen) {
+    public ItemCollectionSystem(Player player) {
         super(Family.all(TransformComponent.class, ItemComponent.class).get(), 1);
         this.player = player;
-        this.gameScreen = gameScreen;
     }
 
     @Override
@@ -47,9 +41,6 @@ public class ItemCollectionSystem extends IteratingSystem {
 
             // Spawn floating text
             spawnFloatingText(itemT.position.x, itemT.position.y, statName);
-
-            // Increment box counter and check for elite spawn
-            gameScreen.incrementBoxCounter();
 
             // Remove item
             getEngine().removeEntity(item);
