@@ -16,6 +16,7 @@ public final class Mappers {
     public static final ComponentMapper<ItemComponent> ITEM = ComponentMapper.getFor(ItemComponent.class);
     public static final ComponentMapper<FloatingTextComponent> FLOATING_TEXT = ComponentMapper.getFor(FloatingTextComponent.class);
     public static final ComponentMapper<FlaskComponent> FLASK = ComponentMapper.getFor(FlaskComponent.class);
+    public static final ComponentMapper<StatusEffectsComponent> STATUS = ComponentMapper.getFor(StatusEffectsComponent.class);
 
     private Mappers() {}
 }

@@ -5,6 +5,7 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.systems.IteratingSystem;
 import com.badlogic.gdx.math.Vector2;
 import io.github.roguelike.ecs.component.*;
+import io.github.roguelike.ecs.enemy.EnemyState;
 import io.github.roguelike.entity.Player;
 
 /** Posodobi tarčo (player) in požene state machine vsakega enemyja. */
@@ -40,6 +41,20 @@ public class EnemyStateSystem extends IteratingSystem {
 
         EnemyStateComponent sc = Mappers.ENEMY_STATE.get(enemy);
         sc.stateTime += deltaTime;
+
+        StatusEffectsComponent status = Mappers.STATUS.get(enemy);
+        if (status != null && status.isStunned()) {
+            // stun: prekine napad (slash in damage se ustavita), enemy stoji in ne premišljuje
+            if (sc.fsm.getCurrentState() == EnemyState.ATTACK) sc.fsm.changeState(EnemyState.IDLE);
+            Mappers.VELOCITY.get(enemy).value.setZero();
+            return;
+        }
+
         sc.fsm.update();
+
+        // slow: velocity nastavi state machine vsak frame, zato množenje ni kumulativno
+        if (status != null && status.isSlowed()) {
+            Mappers.VELOCITY.get(enemy).value.scl(status.slowMultiplier);
+        }
     }
 }

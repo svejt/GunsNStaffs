@@ -96,6 +96,7 @@ public class EnemyFactory implements Disposable {
             .add(new EnemyComponent())
             .add(attack)
             .add(stats)
+            .add(new StatusEffectsComponent())
             .add(animation)
             .add(state);
 
@@ -142,6 +143,7 @@ public class EnemyFactory implements Disposable {
             .add(new EnemyComponent())
             .add(attack)
             .add(stats)
+            .add(new StatusEffectsComponent())
             .add(animation)
             .add(state);
 

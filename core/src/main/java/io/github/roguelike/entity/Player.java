@@ -7,7 +7,9 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import io.github.roguelike.weapon.WeaponType;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -30,6 +32,30 @@ public class Player extends Entity {
     private Direction facing = Direction.DOWN;
     private float stateTime = 0f;
 
+    // Orožje: loadout[i] je na tipki (i + 1); 1-3 = puške, 4-7 = staffi (voda, ogenj, zemlja, veter)
+    private static final WeaponType[] DEFAULT_LOADOUT = {
+        WeaponType.PISTOL, WeaponType.RIFLE, WeaponType.SHOTGUN,
+        WeaponType.WATER_STAFF, WeaponType.FIRE_STAFF, WeaponType.EARTH_STAFF, WeaponType.WIND_STAFF
+    };
+    private static final int[] SLOT_KEYS = {
+        Input.Keys.NUM_1, Input.Keys.NUM_2, Input.Keys.NUM_3, Input.Keys.NUM_4,
+        Input.Keys.NUM_5, Input.Keys.NUM_6, Input.Keys.NUM_7
+    };
+    private static final int[] SLOT_KEYS_NUMPAD = {
+        Input.Keys.NUMPAD_1, Input.Keys.NUMPAD_2, Input.Keys.NUMPAD_3, Input.Keys.NUMPAD_4,
+        Input.Keys.NUMPAD_5, Input.Keys.NUMPAD_6, Input.Keys.NUMPAD_7
+    };
+    private static final float HAND_OFFSET_Y = -4f; // pivot orožja glede na središče playerja
+    private static final float HOLD_DISTANCE = 4f;  // pivot orožja se od središča premakne v smer ciljanja
+
+    private final WeaponType[] loadout = DEFAULT_LOADOUT.clone();
+    private final Map<WeaponType, TextureRegion> weaponRegions = new EnumMap<>(WeaponType.class);
+    private int activeSlot = 0;
+
+    // Ciljanje: aiming = true, dokler player strelja (nastavlja PlayerShootSystem)
+    private boolean aiming = false;
+    private final Vector2 aimDirection = new Vector2(1, 0);
+
     // Stats
     private float maxHp;
     private float currentHp;
@@ -49,6 +75,22 @@ public class Player extends Entity {
 
         final int startFrame;
         Direction(int index) { this.startFrame = index * FRAMES_PER_DIRECTION; }
+
+        /** Najbližja od štirih smeri za dani vektor (pri diagonali zmaga horizontala). */
+        public static Direction fromVector(float x, float y) {
+            if (Math.abs(x) >= Math.abs(y)) return x > 0 ? RIGHT : LEFT;
+            return y > 0 ? UP : DOWN;
+        }
+
+        /** Kot smeri v stopinjah (desno = 0, gor = 90). */
+        public float angleDeg() {
+            switch (this) {
+                case UP:   return 90f;
+                case LEFT: return 180f;
+                case DOWN: return 270f;
+                default:   return 0f;
+            }
+        }
     }
 
     public Player(float x, float y) {
@@ -64,6 +106,13 @@ public class Player extends Entity {
 
         loadIdle("PlayerSprites/WizardIdleOutline.png", 0.3f);
         loadWalk("PlayerSprites/WizardWalkOutline.png", 0.1f);
+        loadWeapons();
+    }
+
+    private void loadWeapons() {
+        for (WeaponType type : WeaponType.values()) {
+            weaponRegions.put(type, new TextureRegion(loadTexture(type.texturePath)));
+        }
     }
 
     private Texture loadTexture(String path) {
@@ -116,6 +165,13 @@ public class Player extends Entity {
     }
 
     private void handleInput() {
+        // preklop orožja s tipkami 1-3
+        for (int i = 0; i < loadout.length; i++) {
+            if (Gdx.input.isKeyJustPressed(SLOT_KEYS[i]) || Gdx.input.isKeyJustPressed(SLOT_KEYS_NUMPAD[i])) {
+                selectSlot(i);
+            }
+        }
+
         velocity.set(0, 0);
         // samo WASD; puščične tipke so za streljanje (PlayerShootSystem)
         if (Gdx.input.isKeyPressed(Input.Keys.W)) velocity.y += 1;
@@ -125,14 +181,56 @@ public class Player extends Entity {
         velocity.nor().scl(speed);
     }
 
-    // zapomni si smer zadnjega premikanja (pri diagonali zmaga horizontala)
+    // zapomni si smer zadnjega premikanja (pri diagonali zmaga horizontala);
+    // med streljanjem ima prednost smer ciljanja (glej aimAt)
     private void updateFacing() {
-        if (velocity.isZero()) return;
-        if (Math.abs(velocity.x) >= Math.abs(velocity.y)) {
-            facing = velocity.x > 0 ? Direction.RIGHT : Direction.LEFT;
-        } else {
-            facing = velocity.y > 0 ? Direction.UP : Direction.DOWN;
-        }
+        if (aiming || velocity.isZero()) return;
+        facing = Direction.fromVector(velocity.x, velocity.y);
+    }
+
+    /** Izbere orožje v danem slotu (0-based); neveljavni indeksi se ignorirajo. */
+    public void selectSlot(int slot) {
+        if (slot < 0 || slot >= loadout.length) return;
+        activeSlot = slot;
+    }
+
+    public int getActiveSlot() { return activeSlot; }
+    public WeaponType[] getLoadout() { return loadout; }
+    public WeaponType getActiveWeapon() { return loadout[activeSlot]; }
+    public TextureRegion getWeaponRegion(WeaponType type) { return weaponRegions.get(type); }
+
+    /** Player strelja v smeri direction: gleda in cilja v to smer, ne glede na smer hoje. */
+    public void aimAt(Vector2 direction) {
+        if (direction.isZero()) return;
+        aiming = true;
+        aimDirection.set(direction).nor();
+        facing = Direction.fromVector(aimDirection.x, aimDirection.y);
+    }
+
+    /** Player ne strelja več: facing se spet ravna po hoji. */
+    public void stopAiming() {
+        aiming = false;
+    }
+
+    public boolean isAiming() { return aiming; }
+
+    /** Kot orožja v stopinjah: smer ciljanja med streljanjem, sicer smer gledanja. */
+    public float getGunAngleDeg() {
+        return aiming ? aimDirection.angleDeg() : facing.angleDeg();
+    }
+
+    private Vector2 getGunPivot(Vector2 out) {
+        float angle = getGunAngleDeg() * MathUtils.degreesToRadians;
+        return out.set(position.x + width / 2f + MathUtils.cos(angle) * HOLD_DISTANCE,
+                       position.y + height / 2f + HAND_OFFSET_Y + MathUtils.sin(angle) * HOLD_DISTANCE);
+    }
+
+    /** Konica cevi aktivnega orožja v svetovnih koordinatah. */
+    public Vector2 getMuzzlePosition(Vector2 out) {
+        float angle = getGunAngleDeg() * MathUtils.degreesToRadians;
+        getGunPivot(out);
+        return out.add(MathUtils.cos(angle) * getActiveWeapon().muzzleLength,
+                       MathUtils.sin(angle) * getActiveWeapon().muzzleLength);
     }
 
     private void updateState() {
@@ -157,7 +255,28 @@ public class Player extends Entity {
             ? idleAnimations.get(facing)
             : walkAnimations.get(facing);
 
+        // proti gor je orožje za telesom, sicer pred njim
+        if (facing == Direction.UP) renderWeapon(batch);
         batch.draw(anim.getKeyFrame(stateTime), position.x, position.y, width, height);
+        if (facing != Direction.UP) renderWeapon(batch);
+    }
+
+    private final Vector2 gunPivot = new Vector2();
+
+    /** Riše aktivno orožje (puško ali staff) v roki, zavrteno v smer ciljanja / gledanja. */
+    private void renderWeapon(SpriteBatch batch) {
+        WeaponType weapon = getActiveWeapon();
+        float angle = getGunAngleDeg();
+        // ko orožje kaže v levo, ga prezrcalimo, da ni obrnjeno na glavo
+        float flipY = (angle > 90f && angle < 270f) ? -1f : 1f;
+
+        getGunPivot(gunPivot);
+        batch.draw(weaponRegions.get(weapon),
+            gunPivot.x - weapon.gripX, gunPivot.y - weapon.gripY,
+            weapon.gripX, weapon.gripY,
+            48f, 48f,
+            1f, flipY,
+            angle);
     }
 
     public void dispose() {

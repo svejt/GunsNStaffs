@@ -10,42 +10,65 @@ import com.badlogic.gdx.utils.Disposable;
 import io.github.roguelike.ecs.component.ProjectileComponent;
 import io.github.roguelike.ecs.component.TransformComponent;
 import io.github.roguelike.ecs.component.VelocityComponent;
+import io.github.roguelike.ecs.status.StatusEffectType;
+import io.github.roguelike.weapon.WeaponType;
 
-/** Ustvarja projectile. Za zdaj je projectile oranžen krog, narisan v kodi (brez asset datoteke). */
+import java.util.EnumMap;
+import java.util.Map;
+
+/**
+ * Ustvarja projectile. Vsako orožje ima svoj projectile (barva/velikost), narisan v kodi
+ * (brez asset datoteke); staffi mu dodajo še učinek (slow/burn/stun/knockback).
+ */
 public class ProjectileFactory implements Disposable {
-    private static final int DIAMETER = 12;
     private static final float SPEED = 400f;
 
-    private final Texture texture;
-    private final TextureRegion region;
+    private final Map<WeaponType, Texture> textures = new EnumMap<>(WeaponType.class);
+    private final Map<WeaponType, TextureRegion> regions = new EnumMap<>(WeaponType.class);
 
     public ProjectileFactory() {
-        Pixmap pixmap = new Pixmap(DIAMETER, DIAMETER, Pixmap.Format.RGBA8888);
-        pixmap.setColor(1f, 0.55f, 0f, 1f); // oranžna
-        pixmap.fillCircle(DIAMETER / 2, DIAMETER / 2, DIAMETER / 2 - 1);
-        texture = new Texture(pixmap);
-        pixmap.dispose();
-        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        for (WeaponType type : WeaponType.values()) {
+            int d = type.projectileSize;
+            Pixmap pixmap = new Pixmap(d, d, Pixmap.Format.RGBA8888);
+            pixmap.setColor(type.projectileColor);
+            pixmap.fillCircle(d / 2, d / 2, d / 2 - 1);
+            // svetlejše jedro, da se elementi ločijo tudi po obliki
+            if (type.effect != StatusEffectType.NONE) {
+                pixmap.setColor(1f, 1f, 1f, 0.6f);
+                pixmap.fillCircle(d / 2, d / 2, Math.max(1, d / 5));
+            }
+            Texture texture = new Texture(pixmap);
+            pixmap.dispose();
+            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-        // ko boš imel pravo teksturo, zamenjaj zgornje z: new Texture(Gdx.files.internal("..."))
-        region = new TextureRegion(texture);
+            textures.put(type, texture);
+            regions.put(type, new TextureRegion(texture));
+        }
     }
 
-    /** Ustvari projectile s središčem v (centerX, centerY), ki leti v smeri direction (ni nujno normalizirana). */
-    public Entity createProjectile(Engine engine, float centerX, float centerY, Vector2 direction, float damage) {
+    /**
+     * Ustvari projectile orožja weapon s središčem v (centerX, centerY), ki leti v smeri direction
+     * (ni nujno normalizirana). Učinek staffa se prenese v ProjectileComponent.
+     */
+    public Entity createProjectile(Engine engine, float centerX, float centerY, Vector2 direction,
+                                   float damage, WeaponType weapon) {
         Entity projectile = new Entity();
+        float size = weapon.projectileSize;
 
         TransformComponent transform = new TransformComponent();
-        transform.width = DIAMETER;
-        transform.height = DIAMETER;
-        transform.position.set(centerX - DIAMETER / 2f, centerY - DIAMETER / 2f);
+        transform.width = size;
+        transform.height = size;
+        transform.position.set(centerX - size / 2f, centerY - size / 2f);
 
         VelocityComponent velocity = new VelocityComponent();
         velocity.value.set(direction).nor().scl(SPEED);
 
         ProjectileComponent projectileComponent = new ProjectileComponent();
-        projectileComponent.region = region;
+        projectileComponent.region = regions.get(weapon);
         projectileComponent.damage = damage;
+        projectileComponent.effect = weapon.effect;
+        projectileComponent.effectDuration = weapon.effectDuration;
+        projectileComponent.effectPower = weapon.effectPower;
 
         projectile.add(transform).add(velocity).add(projectileComponent);
         engine.addEntity(projectile);
@@ -54,6 +77,6 @@ public class ProjectileFactory implements Disposable {
 
     @Override
     public void dispose() {
-        texture.dispose();
+        for (Texture texture : textures.values()) texture.dispose();
     }
 }

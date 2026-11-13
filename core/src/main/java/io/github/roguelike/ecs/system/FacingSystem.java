@@ -9,7 +9,10 @@ import io.github.roguelike.ecs.component.Mappers;
 import io.github.roguelike.ecs.component.VelocityComponent;
 import io.github.roguelike.entity.Player.Direction;
 
-/** Smer gledanja = smer zadnjega premikanja (pri diagonali zmaga horizontala, kot pri Playerju). */
+/**
+ * Smer gledanja ECS entitet = smer zadnjega premikanja (pri diagonali zmaga horizontala, kot pri Playerju).
+ * Player ni ECS entiteta: njegov facing upravlja Player (hoja) in PlayerShootSystem (streljanje ima prednost).
+ */
 public class FacingSystem extends IteratingSystem {
 
     public FacingSystem() {
@@ -21,11 +24,6 @@ public class FacingSystem extends IteratingSystem {
         Vector2 v = Mappers.VELOCITY.get(entity).value;
         if (v.isZero()) return;
 
-        FacingComponent facing = Mappers.FACING.get(entity);
-        if (Math.abs(v.x) >= Math.abs(v.y)) {
-            facing.value = v.x > 0 ? Direction.RIGHT : Direction.LEFT;
-        } else {
-            facing.value = v.y > 0 ? Direction.UP : Direction.DOWN;
-        }
+        Mappers.FACING.get(entity).value = Direction.fromVector(v.x, v.y);
     }
 }

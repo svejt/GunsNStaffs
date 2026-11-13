@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
@@ -37,7 +38,9 @@ import io.github.roguelike.ecs.system.ProjectileDamageSystem;
 import io.github.roguelike.ecs.system.ProjectileRenderSystem;
 import io.github.roguelike.ecs.system.ProjectileSystem;
 import io.github.roguelike.ecs.system.SlashRenderSystem;
+import io.github.roguelike.ecs.system.StatusEffectSystem;
 import io.github.roguelike.entity.Player;
+import io.github.roguelike.weapon.WeaponType;
 import io.github.roguelike.world.Dungeon;
 import io.github.roguelike.world.Room;
 import io.github.roguelike.world.Side;
@@ -72,6 +75,11 @@ public class GameScreen extends ScreenAdapter {
     private static final float HP_BAR_WIDTH = 150f;
     private static final float HP_BAR_HEIGHT = 15f;
     private static final float HP_BAR_PADDING = 10f;
+
+    // Weapon HUD settings (spodaj levo)
+    private static final float SLOT_SIZE = 36f; // 7 slotov (3 puške + 4 staffi)
+    private static final float SLOT_GAP = 4f;
+    private static final float SLOT_MARGIN = 10f;
 
     // Difficulty multiplier (increases by 3x each boss kill)
     private float difficultyMultiplier = 1f;
@@ -109,8 +117,9 @@ public class GameScreen extends ScreenAdapter {
         roomFont.getData().setScale(LABEL_SCALE);
         roomFont.setColor(1f, 1f, 1f, 0.2f);
 
-        engine.addSystem(new PlayerShootSystem(player, projectileFactory)); // puščice -> nov projectile
+        engine.addSystem(new PlayerShootSystem(player, projectileFactory, viewport)); // puščice/miška -> projectile aktivnega orožja
         engine.addSystem(new EnemyStateSystem(player)); // state machine -> nastavi velocity
+        engine.addSystem(new StatusEffectSystem(this, WORLD_W, WORLD_H, WALL_THICKNESS)); // burn, slow/stun timerji, knockback
         engine.addSystem(new MovementSystem());         // velocity -> position
         engine.addSystem(new FacingSystem());           // velocity -> smer gledanja
         engine.addSystem(new EnemyDamageSystem(player)); // slash collision -> player damage
@@ -312,8 +321,52 @@ public class GameScreen extends ScreenAdapter {
         shapes.rect(hpBarX, hpBarY, HP_BAR_WIDTH, HP_BAR_HEIGHT);
         shapes.end();
 
+        drawWeaponHud();
+
         // Minimap (samo dokler je TAB pritisnjen)
         if (Gdx.input.isKeyPressed(Input.Keys.TAB)) drawMinimap();
+    }
+
+    /** Sloti orožja (tipke 1-7: puške, staffi) spodaj levo; aktivni je osvetljen. */
+    private void drawWeaponHud() {
+        WeaponType[] loadout = player.getLoadout();
+
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        shapes.setProjectionMatrix(viewport.getCamera().combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < loadout.length; i++) {
+            float x = SLOT_MARGIN + i * (SLOT_SIZE + SLOT_GAP);
+            if (i == player.getActiveSlot()) shapes.setColor(0.9f, 0.75f, 0.2f, 0.55f);
+            else shapes.setColor(0f, 0f, 0f, 0.55f);
+            shapes.rect(x, SLOT_MARGIN, SLOT_SIZE, SLOT_SIZE);
+        }
+        shapes.end();
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        for (int i = 0; i < loadout.length; i++) {
+            float x = SLOT_MARGIN + i * (SLOT_SIZE + SLOT_GAP);
+            if (i == player.getActiveSlot()) shapes.setColor(1f, 0.9f, 0.4f, 1f);
+            else shapes.setColor(0.6f, 0.6f, 0.6f, 1f);
+            shapes.rect(x, SLOT_MARGIN, SLOT_SIZE, SLOT_SIZE);
+        }
+        shapes.end();
+
+        batch.setProjectionMatrix(viewport.getCamera().combined);
+        batch.begin();
+        for (int i = 0; i < loadout.length; i++) {
+            float x = SLOT_MARGIN + i * (SLOT_SIZE + SLOT_GAP);
+            TextureRegion icon = player.getWeaponRegion(loadout[i]);
+            batch.draw(icon, x, SLOT_MARGIN, SLOT_SIZE, SLOT_SIZE);
+            // številka tipke v zgornjem levem kotu slota
+            roomFont.getData().setScale(1f);
+            roomFont.setColor(1f, 1f, 1f, 1f);
+            roomFont.draw(batch, String.valueOf(i + 1), x + 3f, SLOT_MARGIN + SLOT_SIZE - 3f);
+        }
+        // povrni nastavitve velike črke sobe
+        roomFont.getData().setScale(LABEL_SCALE);
+        roomFont.setColor(1f, 1f, 1f, 0.2f);
+        batch.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     /** Minimap v levem zgornjem kotu: fiksen pravokotnik, postavitev sob se prilagodi, da se vedno ujame vanj. */

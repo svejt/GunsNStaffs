@@ -25,6 +25,32 @@ public class ProjectileDamageSystem extends IteratingSystem {
         this.gameScreen = gameScreen;
     }
 
+    /** Prenese učinek staffa (slow/burn/stun/knockback) na zadetega enemyja. */
+    private void applyEffect(Entity enemy, Entity projectile, ProjectileComponent projComp) {
+        StatusEffectsComponent status = Mappers.STATUS.get(enemy);
+        if (status == null) return;
+
+        switch (projComp.effect) {
+            case SLOW:
+                status.slowTimer = projComp.effectDuration;
+                status.slowMultiplier = projComp.effectPower;
+                break;
+            case BURN:
+                status.burnTimer = projComp.effectDuration; // ponoven zadetek osveži trajanje
+                status.burnDps = projComp.damage * projComp.effectPower;
+                break;
+            case STUN:
+                status.stunTimer = Math.max(status.stunTimer, projComp.effectDuration);
+                break;
+            case KNOCKBACK:
+                // smer odriva = smer leta projectila (stran od playerja / mesta izstrela)
+                status.knockback.set(Mappers.VELOCITY.get(projectile).value).nor().scl(projComp.effectPower);
+                break;
+            default:
+                break;
+        }
+    }
+
     @Override
     protected void processEntity(Entity projectile, float deltaTime) {
         TransformComponent projT = Mappers.TRANSFORM.get(projectile);
@@ -41,11 +67,15 @@ public class ProjectileDamageSystem extends IteratingSystem {
             TransformComponent enemyT = Mappers.TRANSFORM.get(enemy);
             StatsComponent enemyStats = Mappers.STATS.get(enemy);
 
+            // že padel enemy (npr. zadet v istem frameu ali od burna) ne sprejema več zadetkov
+            if (enemyStats.currentHp <= 0f) continue;
+
             enemyBounds.set(enemyT.position.x, enemyT.position.y, enemyT.width, enemyT.height);
 
             if (projectileBounds.overlaps(enemyBounds)) {
                 // Nanesi škodo
                 enemyStats.currentHp -= projComp.damage;
+                applyEffect(enemy, projectile, projComp);
 
                 // Odstrani projectile
                 getEngine().removeEntity(projectile);

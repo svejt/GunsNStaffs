@@ -3,6 +3,7 @@ package io.github.roguelike.ecs.system;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.systems.IteratingSystem;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -35,6 +36,14 @@ public class EnemyRenderSystem extends IteratingSystem {
             .animations.get(sc.fsm.getCurrentState())
             .get(Mappers.FACING.get(enemy).value);
 
+        // barvni odtenek po statusu: stun > burn > slow
+        StatusEffectsComponent status = Mappers.STATUS.get(enemy);
+        if (status != null) {
+            if (status.isStunned())      batch.setColor(1f, 1f, 0.45f, 1f);
+            else if (status.isBurning()) batch.setColor(1f, 0.55f, 0.35f, 1f);
+            else if (status.isSlowed())  batch.setColor(0.5f, 0.75f, 1f, 1f);
+        }
         batch.draw(anim.getKeyFrame(sc.stateTime), t.position.x, t.position.y, t.width, t.height);
+        batch.setColor(Color.WHITE);
     }
 }
