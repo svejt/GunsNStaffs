@@ -20,6 +20,13 @@ public class EnemyFactory implements Disposable {
     private static final int FRAME_SIZE = 48;
     private static final int FRAMES_PER_DIRECTION = 2;
 
+    // boss (osnova je elite enemy, ki je že označen z isBoss)
+    private static final float BOSS_SIZE_MULTIPLIER = 2f;
+    private static final float BOSS_BASE_HP = 300f;
+    private static final float BOSS_BASE_DAMAGE = 10f;
+    private static final float BOSS_SPEED = 70f;
+    private static final float BOSS_ATTACK_RANGE = 56f; // večji enemy, zato napade z večje razdalje (središče-središče)
+
     // slash efekt: 10 sličic po 48x24, narisan v desno
     private static final int SLASH_FRAME_W = 48;
     private static final int SLASH_FRAME_H = 24;
@@ -149,6 +156,27 @@ public class EnemyFactory implements Disposable {
 
         engine.addEntity(enemy);
         return enemy;
+    }
+
+    /**
+     * Boss: dvakrat večji enemy z veliko HP, počasnejši, a z daljšim dosegom. Pojavi se tako,
+     * da je njegovo središče v (centerX, centerY). HP in damage rasteta z difficultyMultiplier.
+     */
+    public Entity createBossEnemy(Engine engine, float centerX, float centerY, float difficultyMultiplier) {
+        Entity boss = createEliteEnemy(engine, 0f, 0f, BOSS_SIZE_MULTIPLIER, difficultyMultiplier);
+
+        TransformComponent transform = Mappers.TRANSFORM.get(boss);
+        transform.position.set(centerX - transform.width / 2f, centerY - transform.height / 2f);
+
+        StatsComponent stats = Mappers.STATS.get(boss);
+        stats.maxHp = BOSS_BASE_HP * difficultyMultiplier;
+        stats.currentHp = stats.maxHp;
+        stats.damage = BOSS_BASE_DAMAGE * difficultyMultiplier;
+        stats.movementSpeed = BOSS_SPEED;
+
+        Mappers.ENEMY.get(boss).speed = BOSS_SPEED;
+        Mappers.ATTACK.get(boss).range = BOSS_ATTACK_RANGE;
+        return boss;
     }
 
     @Override

@@ -36,6 +36,10 @@ public class EnemyRenderSystem extends IteratingSystem {
             .animations.get(sc.fsm.getCurrentState())
             .get(Mappers.FACING.get(enemy).value);
 
+        // boss je vijoličen, da izstopa; statusni odtenek ga po potrebi prekrije
+        StatsComponent stats = Mappers.STATS.get(enemy);
+        if (stats != null && stats.isBoss) batch.setColor(1f, 0.6f, 0.95f, 1f);
+
         // barvni odtenek po statusu: stun > burn > slow
         StatusEffectsComponent status = Mappers.STATUS.get(enemy);
         if (status != null) {
